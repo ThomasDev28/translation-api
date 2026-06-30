@@ -13,11 +13,12 @@ cd "$(dirname "$0")/.."
 # Répartition multi-GPU (2× RTX 4090). TTS (vLLM omni, 2 stages, ~16 Go) sur un
 # GPU dédié ; STT+MT (uvicorn, ~9 Go) sur l'autre. Sans ce split les deux ciblent
 # cuda:0 → OOM. Sur une seule carte, mets TTS_GPU=0 APP_GPU=0.
+# Défaut mono-GPU : les 3 modèles sur GPU 0. Pour 2 cartes : APP_GPU=1.
 TTS_GPU="${TTS_GPU:-0}"
-APP_GPU="${APP_GPU:-1}"
-# Fraction VRAM pour vLLM TTS. 0.85 si TTS seul sur son GPU (2× cartes).
-# Sur 1 GPU partagé avec STT+MT, baisse (ex 0.45 sur 48 Go) pour leur laisser ~9 Go.
-TTS_MEM_UTIL="${TTS_MEM_UTIL:-0.85}"
+APP_GPU="${APP_GPU:-0}"
+# Fraction VRAM pour vLLM TTS. Mono-GPU partagé avec STT+MT → 0.45 (≈21 Go sur
+# 48 Go) leur laisse ~27 Go. Si TTS seul sur son GPU (2× cartes), monte à 0.85.
+TTS_MEM_UTIL="${TTS_MEM_UTIL:-0.45}"
 
 echo "── 0/3 : libs CUDA 12 pour CTranslate2 (MADLAD) ──"
 # CTranslate2 est buildé pour CUDA 12 et exige libcublas.so.12 / libcudnn.
