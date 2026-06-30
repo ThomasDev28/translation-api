@@ -22,7 +22,9 @@ echo "── 1/3 : vLLM Omni (Voxtral TTS) sur :8001 ──"
 # Voxtral-4B-TTS (model_type=voxtral_tts) n'est PAS supporté par vLLM stock :
 # il a un module acoustic_transformer que MistralForCausalLM ignore. Le support
 # vient du plugin vllm-omni, qui enregistre l'archi et ajoute le flag --omni.
-python -m pip install --quiet "vllm-omni>=0.18.0"
+# vllm-omni exige une vLLM de MÊME mineure : omni 0.22.0 ↔ vllm 0.22.x. Le pod
+# arrive en vllm 0.24.0 (ImportError supports_xccl) → on pin la paire 0.22.
+python -m pip install --quiet "vllm==0.22.*" "vllm-omni==0.22.0"
 # vllm-omni sert l'endpoint OpenAI-compatible /v1/audio/speech.
 vllm serve "${TTS_MODEL:-mistralai/Voxtral-4B-TTS-2603}" \
   --omni \
