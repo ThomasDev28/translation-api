@@ -15,6 +15,9 @@ cd "$(dirname "$0")/.."
 # cuda:0 → OOM. Sur une seule carte, mets TTS_GPU=0 APP_GPU=0.
 TTS_GPU="${TTS_GPU:-0}"
 APP_GPU="${APP_GPU:-1}"
+# Fraction VRAM pour vLLM TTS. 0.85 si TTS seul sur son GPU (2× cartes).
+# Sur 1 GPU partagé avec STT+MT, baisse (ex 0.45 sur 48 Go) pour leur laisser ~9 Go.
+TTS_MEM_UTIL="${TTS_MEM_UTIL:-0.85}"
 
 echo "── 0/3 : libs CUDA 12 pour CTranslate2 (MADLAD) ──"
 # CTranslate2 est buildé pour CUDA 12 et exige libcublas.so.12 / libcudnn.
@@ -37,7 +40,7 @@ python -m pip install --quiet "vllm==0.22.*" "vllm-omni==0.22.0"
 CUDA_VISIBLE_DEVICES="${TTS_GPU}" vllm serve "${TTS_MODEL:-mistralai/Voxtral-4B-TTS-2603}" \
   --omni \
   --port 8001 \
-  --gpu-memory-utilization 0.85 \
+  --gpu-memory-utilization "${TTS_MEM_UTIL}" \
   > /tmp/vllm_tts.log 2>&1 &
 VLLM_PID=$!
 echo "   vLLM PID $VLLM_PID (logs: /tmp/vllm_tts.log)"
