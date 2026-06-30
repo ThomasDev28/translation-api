@@ -10,6 +10,12 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+# Répartition multi-GPU (2× RTX 4090). TTS (vLLM omni, 2 stages, ~16 Go) sur un
+# GPU dédié ; STT+MT (uvicorn, ~9 Go) sur l'autre. Sans ce split les deux ciblent
+# cuda:0 → OOM. Sur une seule carte, mets TTS_GPU=0 APP_GPU=0.
+TTS_GPU="${TTS_GPU:-0}"
+APP_GPU="${APP_GPU:-1}"
+
 echo "── 0/3 : libs CUDA 12 pour CTranslate2 (MADLAD) ──"
 # CTranslate2 est buildé pour CUDA 12 et exige libcublas.so.12 / libcudnn.
 # Le pod tourne en CUDA 13 → on fournit les libs cu12 via les wheels nvidia.
@@ -26,14 +32,12 @@ echo "── 1/3 : vLLM Omni (Voxtral TTS) sur :8001 ──"
 # arrive en vllm 0.24.0 (ImportError supports_xccl) → on pin la paire 0.22.
 python -m pip install --quiet "vllm==0.22.*" "vllm-omni==0.22.0"
 # vllm-omni sert l'endpoint OpenAI-compatible /v1/audio/speech.
-# 0.50 du GPU (≈12 Go sur RTX 4090 24 Go) : 0.35 ne laissait aucune VRAM
-# pour le KV-cache des 2 stages omni (LM + acoustic) → "No available memory
-# for the cache blocks". STT bf16 (~6 Go) + MADLAD CT2 (~3 Go) tiennent dans
-# le reste, chargés ensuite par uvicorn.
-vllm serve "${TTS_MODEL:-mistralai/Voxtral-4B-TTS-2603}" \
+# Seul sur son GPU (TTS_GPU) → 0.85 : large pour les poids 4B + le KV-cache
+# des 2 stages omni (LM + acoustic). STT/MT vivent sur APP_GPU, pas de partage.
+CUDA_VISIBLE_DEVICES="${TTS_GPU}" vllm serve "${TTS_MODEL:-mistralai/Voxtral-4B-TTS-2603}" \
   --omni \
   --port 8001 \
-  --gpu-memory-utilization 0.50 \
+  --gpu-memory-utilization 0.85 \
   > /tmp/vllm_tts.log 2>&1 &
 VLLM_PID=$!
 echo "   vLLM PID $VLLM_PID (logs: /tmp/vllm_tts.log)"
@@ -47,5 +51,5 @@ for i in $(seq 1 120); do
   sleep 5
 done
 
-echo "── 3/3 : API traduction FastAPI sur :8000 ──"
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+echo "── 3/3 : API traduction FastAPI sur :8000 (GPU ${APP_GPU}) ──"
+exec env CUDA_VISIBLE_DEVICES="${APP_GPU}" uvicorn app.main:app --host 0.0.0.0 --port 8000
