@@ -10,6 +10,14 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+echo "── 0/3 : libs CUDA 12 pour CTranslate2 (MADLAD) ──"
+# CTranslate2 est buildé pour CUDA 12 et exige libcublas.so.12 / libcudnn.
+# Le pod tourne en CUDA 13 → on fournit les libs cu12 via les wheels nvidia.
+python -m pip install --quiet nvidia-cublas-cu12 nvidia-cudnn-cu12
+CT2_LIBS=$(python -c "import nvidia.cublas, nvidia.cudnn, os; print(os.path.dirname(nvidia.cublas.__file__)+'/lib:'+os.path.dirname(nvidia.cudnn.__file__)+'/lib')")
+export LD_LIBRARY_PATH="${CT2_LIBS}:${LD_LIBRARY_PATH:-}"
+echo "   LD_LIBRARY_PATH += ${CT2_LIBS}"
+
 echo "── 1/3 : vLLM Omni (Voxtral TTS) sur :8001 ──"
 # vllm-omni sert l'endpoint OpenAI-compatible /v1/audio/speech.
 vllm serve "${TTS_MODEL:-mistralai/Voxtral-4B-TTS-2603}" \
