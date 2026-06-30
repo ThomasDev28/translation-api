@@ -9,10 +9,13 @@ echo "── GPU check ──"
 nvidia-smi || { echo "Pas de GPU NVIDIA visible — abort."; exit 1; }
 
 echo "── install deps ──"
+# ⚠️ EXIGE un pod avec driver CUDA récent (≥ 13.x / driver ≥ 575). vLLM + torch 2.11
+# sont compilés pour CUDA 13 → un host CUDA 12.x échoue (libcudart.so.13 manquant).
+#   nvidia-smi  → vérifier "CUDA Version: 13.x" avant de lancer.
+nvidia-smi | grep -i "cuda version" || true
+
 pip install --upgrade pip
-# torch compilé pour CUDA 12.4 (compatible drivers 12.4+, dont 12.8). --force-reinstall
-# car le template peut déjà avoir un torch trop récent (cu12.9) incompatible driver.
-pip install --force-reinstall torch torchaudio --index-url https://download.pytorch.org/whl/cu124
+# On NE touche PAS à torch : on garde celui du template (cohérent avec vLLM/torchvision).
 pip install -e .
 pip install "vllm>=0.18"
 
