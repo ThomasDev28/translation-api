@@ -10,6 +10,9 @@ nvidia-smi || { echo "Pas de GPU NVIDIA visible — abort."; exit 1; }
 
 echo "── install deps ──"
 pip install --upgrade pip
+# torch compilé pour CUDA 12.4 (compatible drivers 12.4+, dont 12.8). Évite que
+# pip tire un torch trop récent (cu12.9) incompatible avec le driver du pod.
+pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 pip install -e .
 pip install "vllm>=0.18"
 
