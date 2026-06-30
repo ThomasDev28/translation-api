@@ -1,0 +1,36 @@
+[project]
+name = "translation-local"
+version = "0.1.0"
+description = "Real-time speech translation API (Voxtral + MADLAD) — CUDA / NVIDIA"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "websockets>=13",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "soundfile>=0.12",
+    "httpx>=0.27",
+    # Inference (CUDA)
+    "torch>=2.4",
+    "transformers>=4.54",
+    "mistral-common[audio]>=1.8.1",
+    "ctranslate2>=4.5",          # build CUDA inclus dans le wheel
+    "sentencepiece>=0.2",
+    "huggingface-hub>=0.26",
+    # TTS servi séparément par vLLM Omni (cf. deploy/start.sh)
+    # "vllm>=0.18"  ← installé dans le conteneur, pas en dépendance Python directe
+]
+
+[project.optional-dependencies]
+dev = ["ruff", "pytest"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.ruff]
+line-length = 100

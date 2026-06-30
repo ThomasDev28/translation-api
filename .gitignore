@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+models/
+samples/
+*.wav
+.DS_Store
+.ruff_cache/
