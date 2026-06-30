@@ -12,11 +12,13 @@ STT_MODEL = os.getenv("STT_MODEL", "mistralai/Voxtral-Mini-3B-2507")
 # TTS : Voxtral 4B TTS, servi par vLLM Omni (endpoint OpenAI-compatible).
 TTS_MODEL = os.getenv("TTS_MODEL", "mistralai/Voxtral-4B-TTS-2603")
 TTS_VLLM_URL = os.getenv("TTS_VLLM_URL", "http://127.0.0.1:8001/v1")
-# MT : MADLAD-400-3B, poids normaux, converti CTranslate2 float16 au déploiement.
+# MT : MADLAD-400-3B (T5), converti CTranslate2 au déploiement.
 MT_MODEL = os.getenv("MT_MODEL", "google/madlad400-3b-mt")
 MT_CT2_DIR = os.getenv("MT_CT2_DIR", "/models/madlad400-3b-ct2-fp16")
 MT_DEVICE = os.getenv("MT_DEVICE", "cuda")
-MT_COMPUTE_TYPE = os.getenv("MT_COMPUTE_TYPE", "float16")
+# bfloat16 OBLIGATOIRE : MADLAD est un T5 (embeddings std ~13) qui overflow en
+# float16 → sort du vide/charabia. bf16 (ou float32) donne des traductions OK.
+MT_COMPUTE_TYPE = os.getenv("MT_COMPUTE_TYPE", "bfloat16")
 
 # Device torch pour STT.
 TORCH_DEVICE = os.getenv("TORCH_DEVICE", "cuda")

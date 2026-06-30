@@ -36,16 +36,47 @@ def fetch(repo_id: str, retries: int = 4) -> None:
             print(f"  ⚠️  échec {attempt}/{retries} ({e}); retry…")
 
 
+def _save_fixed_madlad(dst: Path) -> None:
+    """Charge MADLAD, répare l'aliasing d'embeddings, sauvegarde un HF corrigé.
+
+    MADLAD est un T5 `tie_word_embeddings=false` dont le checkpoint stocke
+    `decoder.embed_tokens.weight` (les vrais embeddings) + `lm_head.weight`,
+    sans `shared.weight`. transformers >= 5 charge mal ce layout : il alias
+    `shared` / `encoder.embed_tokens` sur le `lm_head` au lieu des embeddings
+    → l'encodeur embed du bruit → traduction en charabia ("ne pro ne pro…").
+    On rétablit : shared = encoder.embed = decoder.embed = vrais embeddings ;
+    lm_head garde ses poids propres. Le HF corrigé (avec un vrai `shared.weight`)
+    se recharge ensuite correctement, y compris par ct2-transformers-converter.
+    """
+    import torch.nn as nn
+    from transformers import AutoTokenizer, T5ForConditionalGeneration
+
+    print(f"=== réparation embeddings MADLAD → {dst} ===")
+    m = T5ForConditionalGeneration.from_pretrained(MT_MODEL, torch_dtype="float32")
+    real_emb = m.decoder.embed_tokens.weight.data.clone()   # std ~13 : vrais embeddings
+    real_lmhead = m.lm_head.weight.data.clone()             # std ~0.16 : tête de sortie
+    shared = nn.Parameter(real_emb)
+    m.shared.weight = shared
+    m.encoder.embed_tokens.weight = shared
+    m.decoder.embed_tokens.weight = shared
+    m.lm_head.weight = nn.Parameter(real_lmhead)
+    m.save_pretrained(dst)
+    AutoTokenizer.from_pretrained(MT_MODEL).save_pretrained(dst)
+
+
 def convert_madlad() -> None:
     out = Path(MT_CT2_DIR)
     if out.exists():
         print(f"=== MADLAD CT2 déjà présent: {out} ===")
         return
+    fixed = out.parent / "madlad400-3b-hf-fixed"
+    if not fixed.exists():
+        _save_fixed_madlad(fixed)
     print(f"\n=== conversion MADLAD → CTranslate2 float16 ({out}) ===")
     subprocess.run(
         [
             "ct2-transformers-converter",
-            "--model", MT_MODEL,
+            "--model", str(fixed),
             "--output_dir", str(out),
             "--quantization", "float16",
             "--force",
