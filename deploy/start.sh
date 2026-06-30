@@ -26,10 +26,14 @@ echo "── 1/3 : vLLM Omni (Voxtral TTS) sur :8001 ──"
 # arrive en vllm 0.24.0 (ImportError supports_xccl) → on pin la paire 0.22.
 python -m pip install --quiet "vllm==0.22.*" "vllm-omni==0.22.0"
 # vllm-omni sert l'endpoint OpenAI-compatible /v1/audio/speech.
+# 0.50 du GPU (≈12 Go sur RTX 4090 24 Go) : 0.35 ne laissait aucune VRAM
+# pour le KV-cache des 2 stages omni (LM + acoustic) → "No available memory
+# for the cache blocks". STT bf16 (~6 Go) + MADLAD CT2 (~3 Go) tiennent dans
+# le reste, chargés ensuite par uvicorn.
 vllm serve "${TTS_MODEL:-mistralai/Voxtral-4B-TTS-2603}" \
   --omni \
   --port 8001 \
-  --gpu-memory-utilization 0.35 \
+  --gpu-memory-utilization 0.50 \
   > /tmp/vllm_tts.log 2>&1 &
 VLLM_PID=$!
 echo "   vLLM PID $VLLM_PID (logs: /tmp/vllm_tts.log)"
