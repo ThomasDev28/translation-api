@@ -14,6 +14,7 @@ dependencies = [
     # Inference (CUDA)
     "torch>=2.4",
     "transformers>=4.54",
+    "accelerate>=0.34",          # requis par device_map (transformers from_pretrained)
     "mistral-common[audio]>=1.8.1",
     "ctranslate2>=4.5",          # build CUDA inclus dans le wheel
     "sentencepiece>=0.2",
