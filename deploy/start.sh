@@ -14,7 +14,7 @@ echo "── 0/3 : libs CUDA 12 pour CTranslate2 (MADLAD) ──"
 # CTranslate2 est buildé pour CUDA 12 et exige libcublas.so.12 / libcudnn.
 # Le pod tourne en CUDA 13 → on fournit les libs cu12 via les wheels nvidia.
 python -m pip install --quiet nvidia-cublas-cu12 nvidia-cudnn-cu12
-CT2_LIBS=$(python -c "import nvidia.cublas, nvidia.cudnn, os; print(os.path.dirname(nvidia.cublas.__file__)+'/lib:'+os.path.dirname(nvidia.cudnn.__file__)+'/lib')")
+CT2_LIBS=$(python -c "import nvidia.cublas, nvidia.cudnn; print(list(nvidia.cublas.__path__)[0]+'/lib:'+list(nvidia.cudnn.__path__)[0]+'/lib')")
 export LD_LIBRARY_PATH="${CT2_LIBS}:${LD_LIBRARY_PATH:-}"
 echo "   LD_LIBRARY_PATH += ${CT2_LIBS}"
 
