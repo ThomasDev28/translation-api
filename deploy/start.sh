@@ -19,8 +19,13 @@ export LD_LIBRARY_PATH="${CT2_LIBS}:${LD_LIBRARY_PATH:-}"
 echo "   LD_LIBRARY_PATH += ${CT2_LIBS}"
 
 echo "── 1/3 : vLLM Omni (Voxtral TTS) sur :8001 ──"
+# Voxtral-4B-TTS (model_type=voxtral_tts) n'est PAS supporté par vLLM stock :
+# il a un module acoustic_transformer que MistralForCausalLM ignore. Le support
+# vient du plugin vllm-omni, qui enregistre l'archi et ajoute le flag --omni.
+python -m pip install --quiet "vllm-omni>=0.18.0"
 # vllm-omni sert l'endpoint OpenAI-compatible /v1/audio/speech.
 vllm serve "${TTS_MODEL:-mistralai/Voxtral-4B-TTS-2603}" \
+  --omni \
   --port 8001 \
   --gpu-memory-utilization 0.35 \
   > /tmp/vllm_tts.log 2>&1 &
