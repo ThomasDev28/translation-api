@@ -15,9 +15,11 @@ import torch
 import torch.nn as nn
 from transformers import AutoTokenizer, T5ForConditionalGeneration
 
-from .config import MT_MODEL, MT_DEVICE, MT_COMPUTE_TYPE, MT_BEAM_SIZE
+from .config import MT_MODEL, MT_DEVICE, MT_COMPUTE_TYPE
 
 _DTYPES = {"bfloat16": torch.bfloat16, "float16": torch.float16, "float32": torch.float32}
+# Beam search : greedy (=1) dégrade les cibles morphologiquement contraintes.
+_BEAM_SIZE = 4
 
 
 class MadladMT:
@@ -48,5 +50,5 @@ class MadladMT:
             return ""
         # Préfixe langue cible MADLAD. (src non utilisé : MADLAD détecte la source.)
         ids = self._tok(f"<2{tgt}> {text}", return_tensors="pt").input_ids.to(self._device)
-        out = self._model.generate(ids, num_beams=MT_BEAM_SIZE, max_new_tokens=256)
+        out = self._model.generate(ids, num_beams=_BEAM_SIZE, max_new_tokens=256)
         return self._tok.decode(out[0], skip_special_tokens=True).strip()
