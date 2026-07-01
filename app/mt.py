@@ -1,7 +1,7 @@
-"""MT — MADLAD-400-3B via CTranslate2 (CUDA, float16).
+"""MT — MADLAD-400-7B via CTranslate2 (CUDA, float16).
 
 MADLAD = T5 multilingue 400+ langues. Poids normaux convertis CTranslate2 float16
-au déploiement (deploy/convert_madlad.sh) → tourne sur GPU, ~6 GB VRAM.
+au déploiement (scripts/download_models.py) → tourne sur GPU, ~14 GB VRAM.
 
 MADLAD cible la langue via un préfixe `<2xx>` (ex: `<2en>` pour l'anglais).
 """
@@ -9,7 +9,7 @@ MADLAD cible la langue via un préfixe `<2xx>` (ex: `<2en>` pour l'anglais).
 import ctranslate2
 from transformers import AutoTokenizer
 
-from .config import MT_MODEL, MT_CT2_DIR, MT_DEVICE, MT_COMPUTE_TYPE
+from .config import MT_MODEL, MT_CT2_DIR, MT_DEVICE, MT_COMPUTE_TYPE, MT_BEAM_SIZE
 
 
 class MadladMT:
@@ -32,7 +32,7 @@ class MadladMT:
 
         results = self._translator.translate_batch(
             [source],
-            beam_size=1,  # greedy = + rapide, suffisant en temps réel
+            beam_size=MT_BEAM_SIZE,
             max_decoding_length=256,
         )
         target_tokens = results[0].hypotheses[0]

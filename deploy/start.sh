@@ -11,8 +11,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # Répartition multi-GPU (2× RTX 4090). TTS (vLLM omni, 2 stages, ~16 Go) sur un
-# GPU dédié ; STT+MT (uvicorn, ~9 Go) sur l'autre. Sans ce split les deux ciblent
-# cuda:0 → OOM. Sur une seule carte, mets TTS_GPU=0 APP_GPU=0.
+# GPU dédié ; STT+MT (uvicorn, ~20 Go avec MADLAD-7B) sur l'autre. Sans ce split
+# les deux ciblent cuda:0 → OOM. Sur une seule carte, mets TTS_GPU=0 APP_GPU=0.
 # Défaut mono-GPU : les 3 modèles sur GPU 0. Pour 2 cartes : APP_GPU=1.
 TTS_GPU="${TTS_GPU:-0}"
 APP_GPU="${APP_GPU:-0}"

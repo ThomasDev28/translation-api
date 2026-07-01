@@ -2,7 +2,7 @@
 
 - STT  : snapshot mistralai/Voxtral-Mini-3B-2507 (transformers le charge).
 - TTS  : snapshot mistralai/Voxtral-4B-TTS-2603 (servi par vLLM).
-- MADLAD: download google/madlad400-3b-mt + conversion CTranslate2 float16 (GPU).
+- MADLAD: download MT_MODEL (défaut google/madlad400-7b-mt) + conversion CTranslate2 float16 (GPU).
 """
 
 import os
@@ -69,7 +69,8 @@ def convert_madlad() -> None:
     if out.exists():
         print(f"=== MADLAD CT2 déjà présent: {out} ===")
         return
-    fixed = out.parent / "madlad400-3b-hf-fixed"
+    model_slug = MT_MODEL.rsplit("/", 1)[-1]
+    fixed = out.parent / f"{model_slug}-hf-fixed"
     if not fixed.exists():
         _save_fixed_madlad(fixed)
     print(f"\n=== conversion MADLAD → CTranslate2 float16 ({out}) ===")
