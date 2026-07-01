@@ -20,9 +20,6 @@ MT_DEVICE = os.getenv("MT_DEVICE", "cuda")
 # bfloat16 OBLIGATOIRE : MADLAD est un T5 (embeddings std ~13) qui overflow en
 # float16 → sort du vide/charabia. bf16 (ou float32) donne des traductions OK.
 MT_COMPUTE_TYPE = os.getenv("MT_COMPUTE_TYPE", "bfloat16")
-# Beam search fixe pour toutes les paires de langues (greedy=1 dégradait les
-# directions vers cible morphologiquement contrainte, ex: en->fr).
-MT_BEAM_SIZE = int(os.getenv("MT_BEAM_SIZE", "4"))
 
 # Device torch pour STT.
 TORCH_DEVICE = os.getenv("TORCH_DEVICE", "cuda")

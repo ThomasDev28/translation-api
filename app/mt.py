@@ -9,7 +9,7 @@ MADLAD cible la langue via un préfixe `<2xx>` (ex: `<2en>` pour l'anglais).
 import ctranslate2
 from transformers import AutoTokenizer
 
-from .config import MT_MODEL, MT_CT2_DIR, MT_DEVICE, MT_COMPUTE_TYPE, MT_BEAM_SIZE
+from .config import MT_MODEL, MT_CT2_DIR, MT_DEVICE, MT_COMPUTE_TYPE
 
 
 class MadladMT:
@@ -32,7 +32,6 @@ class MadladMT:
 
         results = self._translator.translate_batch(
             [source],
-            beam_size=MT_BEAM_SIZE,
             max_decoding_length=256,
         )
         target_tokens = results[0].hypotheses[0]
