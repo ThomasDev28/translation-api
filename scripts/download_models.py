@@ -2,7 +2,7 @@
 
 - STT   : mistralai/Voxtral-Mini-3B-2507 (transformers).
 - TTS   : mistralai/Voxtral-4B-TTS-2603  (servi par vLLM).
-- MADLAD : MT_MODEL (défaut google/madlad400-3b-mt) — chargé DIRECT par transformers
+- MADLAD : MT_MODEL (défaut google/madlad400-7b-mt-bt) — chargé DIRECT par transformers
   au runtime (app/mt.py), avec réparation embeddings EN MÉMOIRE. Pas de conversion
   CTranslate2 : le converter re-casse l'aliasing d'embeddings MADLAD (cf app/mt.py).
 """

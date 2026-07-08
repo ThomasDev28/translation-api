@@ -50,6 +50,7 @@ async def translate(ws: WebSocket) -> None:
                         src=data["sourceLang"],
                         tgt=data["targetLang"],
                         voice=data.get("voice"),
+                        text_only=data.get("textOnly", False),
                     )
 
                 elif kind == "commit" and session:

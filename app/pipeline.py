@@ -8,7 +8,7 @@ from collections.abc import Iterator
 
 import numpy as np
 
-from .config import SAMPLE_RATE, MAX_SEGMENT_SECONDS
+from .config import SAMPLE_RATE, MAX_SEGMENT_SECONDS, TTS_ENABLED
 from .stt import VoxtralSTT
 from .mt import MadladMT
 from .tts import VoxtralTTS
@@ -28,9 +28,19 @@ def float32_to_pcm16(audio: np.ndarray) -> bytes:
 class Session:
     """Un flux de traduction (un couple speaker→listener)."""
 
-    def __init__(self, stt: VoxtralSTT, mt: MadladMT, tts: VoxtralTTS, src: str, tgt: str, voice):
+    def __init__(
+        self,
+        stt: VoxtralSTT,
+        mt: MadladMT,
+        tts: VoxtralTTS | None,
+        src: str,
+        tgt: str,
+        voice,
+        text_only: bool = False,
+    ):
         self._stt, self._mt, self._tts = stt, mt, tts
         self.src, self.tgt, self.voice = src, tgt, voice
+        self.text_only = text_only
         self._buf = bytearray()
         self._max_bytes = int(MAX_SEGMENT_SECONDS * SAMPLE_RATE * 2)  # 2 octets/sample
 
@@ -59,6 +69,13 @@ class Session:
         if not text_tgt:
             return
 
+        # Mode sous-titres : le texte traduit suffit — skip TTS (étape la plus
+        # coûteuse) → 'done' arrive 2-3× plus vite, zéro GPU synthèse.
+        # Idem si le serveur tourne sans TTS (TTS_ENABLED=false) : une session
+        # audio reçoit quand même le texte (dégradation gracieuse, pas de crash).
+        if self.text_only or self._tts is None:
+            return
+
         # 3. TTS (streaming)
         for chunk in self._tts.synthesize(text_tgt, lang=self.tgt, voice=self.voice):
             yield ("audio", float32_to_pcm16(chunk))
@@ -73,7 +90,11 @@ class TranslationPipeline:
     def __init__(self):
         self.stt = VoxtralSTT()
         self.mt = MadladMT()
-        self.tts = VoxtralTTS()
+        # TTS_ENABLED=false → serveur sous-titres only : pas de client TTS,
+        # pas besoin du serveur vLLM Omni (~21 Go VRAM économisés).
+        self.tts = VoxtralTTS() if TTS_ENABLED else None
+        if not TTS_ENABLED:
+            print("[pipeline] TTS désactivé (TTS_ENABLED=false) — sortie texte uniquement")
         self._warmup()
         print("[pipeline] ready")
 
@@ -91,10 +112,11 @@ class TranslationPipeline:
             # MT
             self.mt.translate("warmup", "en", "fr")
             # TTS (consomme le générateur pour déclencher la génération)
-            for _ in self.tts.synthesize("warmup", lang="fr"):
-                pass
+            if self.tts is not None:
+                for _ in self.tts.synthesize("warmup", lang="fr"):
+                    pass
         except Exception as e:  # warmup best-effort : ne bloque pas le boot
             print(f"[pipeline] warmup partiel: {e}")
 
-    def new_session(self, src: str, tgt: str, voice=None) -> Session:
-        return Session(self.stt, self.mt, self.tts, src, tgt, voice)
+    def new_session(self, src: str, tgt: str, voice=None, text_only: bool = False) -> Session:
+        return Session(self.stt, self.mt, self.tts, src, tgt, voice, text_only=text_only)
