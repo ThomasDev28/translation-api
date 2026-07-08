@@ -12,13 +12,15 @@ STT_MODEL = os.getenv("STT_MODEL", "mistralai/Voxtral-Mini-3B-2507")
 # TTS : Voxtral 4B TTS, servi par vLLM Omni (endpoint OpenAI-compatible).
 TTS_MODEL = os.getenv("TTS_MODEL", "mistralai/Voxtral-4B-TTS-2603")
 TTS_VLLM_URL = os.getenv("TTS_VLLM_URL", "http://127.0.0.1:8001/v1")
-# MT : MADLAD-400-7B-bt (T5), chargé DIRECT par transformers (app/mt.py), ~14 Go
-# VRAM bf16. Variante backtranslation : quasi la qualité du 10B sur les paires
-# majeures (fr/en/de/es) et plus robuste aux entrées bruitées — or nos entrées
-# SONT du texte STT (erreurs de transcription, oral mal formé). Sur 48 Go sans
-# TTS : STT 7 + MT 14 + inférence ≈ 32 Go pic, marge large.
-# ⚠️ 24 Go (TTS actif ou pas) → madlad400-3b-mt (sinon OOM sous charge).
-MT_MODEL = os.getenv("MT_MODEL", "google/madlad400-7b-mt-bt")
+# MT : MADLAD-400-3B (T5), chargé DIRECT par transformers (app/mt.py), ~6 Go
+# VRAM bf16. Défaut sûr : compatible TTS actif sur 48 Go (vLLM ~21 + STT 7 +
+# MT 6 + pics ≈ 42 Go) et pods 24 Go sans TTS.
+# Upgrade qualité (sous-titres only, TTS_ENABLED=false, 48 Go) :
+#   MT_MODEL=google/madlad400-7b-mt-bt  (~14 Go, pic ≈ 32 Go — quasi qualité
+#   10B sur paires majeures, robuste au texte STT bruité).
+# ⚠️ 7b-mt-bt + TTS sur 48 Go = OOM (~53 Go pic) : vLLM réserve sa fraction
+#   d'un bloc, les pics d'inférence MT/STT ne rentrent plus.
+MT_MODEL = os.getenv("MT_MODEL", "google/madlad400-3b-mt")
 MT_DEVICE = os.getenv("MT_DEVICE", "cuda")
 # bfloat16 OBLIGATOIRE : MADLAD est un T5 (embeddings std ~13) qui overflow en
 # float16 → charabia. bf16 (ou float32) donne des traductions OK.
