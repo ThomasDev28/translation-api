@@ -50,12 +50,23 @@ class Session:
         if len(self._buf) > self._max_bytes:
             del self._buf[: len(self._buf) - self._max_bytes]
 
+    def take(self) -> bytes:
+        """Snapshot + reset du buffer. À appeler AU COMMIT (côté event loop) :
+        fige la frontière du segment même si le traitement part en différé —
+        l'audio qui arrive ensuite appartient au segment suivant."""
+        pcm = bytes(self._buf)
+        self._buf.clear()
+        return pcm
+
     def flush(self):
         """Traite le buffer accumulé. Yield: ("text", stage, str) ou ("audio", bytes)."""
-        if not self._buf:
+        yield from self.process(self.take())
+
+    def process(self, pcm: bytes):
+        """Traduit un segment déjà snapshotté (via take()). Même contrat que flush()."""
+        if not pcm:
             return
-        audio = pcm16_to_float32(bytes(self._buf))
-        self._buf.clear()
+        audio = pcm16_to_float32(pcm)
 
         # 1. STT
         text_src = self._stt.transcribe(audio, lang=self.src)
