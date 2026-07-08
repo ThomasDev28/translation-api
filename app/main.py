@@ -16,6 +16,7 @@ import threading
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
+from .config import SAMPLE_RATE
 from .pipeline import TranslationPipeline
 
 app = FastAPI(title="translation-local")
@@ -27,6 +28,9 @@ pipeline: TranslationPipeline | None = None
 # appels generate() concurrents risquent l'OOM (pics d'activations cumulés).
 # Pris stage par stage → deux sessions peuvent s'entrelacer entre les étapes.
 GPU_LOCK = threading.Lock()
+
+# Rattrapage : borne de fusion des segments en retard (~20 s d'audio PCM16).
+MERGE_CAP_BYTES = 20 * SAMPLE_RATE * 2
 
 
 def _next_item(gen):
@@ -64,6 +68,23 @@ async def translate(ws: WebSocket) -> None:
             pcm = await segments.get()
             if pcm is None:
                 return
+            # Rattrapage : si le GPU est plus lent que la parole, les segments
+            # s'accumulent et la latence s'additionne. On fusionne ce qui est
+            # en attente en UN passage STT/MT (le coût fixe par appel domine
+            # sur les petits segments VAD) → le retard se résorbe au lieu de
+            # croître. Bonus : plus de contexte = meilleure traduction.
+            if not segments.empty():
+                merged = bytearray(pcm)
+                pending = segments.qsize()
+                while not segments.empty() and len(merged) < MERGE_CAP_BYTES:
+                    nxt = segments.get_nowait()
+                    if nxt is None:  # sentinelle de fin : la remettre pour après
+                        segments.put_nowait(None)
+                        break
+                    merged.extend(nxt)
+                print(f"[worker] retard: fusion de {pending + 1} segments "
+                      f"({len(merged) / (SAMPLE_RATE * 2):.1f}s audio)")
+                pcm = bytes(merged)
             gen = session.process(pcm)
             while True:
                 # Chaque next() = un stage (STT, MT, chunk TTS) dans un thread :

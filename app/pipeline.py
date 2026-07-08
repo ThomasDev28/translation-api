@@ -4,6 +4,7 @@ PoC séquentiel : un segment audio complet entre, ressort traduit en audio.
 Pas de pipelining inter-étapes (priorité simplicité pour valider qualité/latence).
 """
 
+import time
 from collections.abc import Iterator
 
 import numpy as np
@@ -67,15 +68,26 @@ class Session:
         if not pcm:
             return
         audio = pcm16_to_float32(pcm)
+        audio_s = len(audio) / SAMPLE_RATE
 
         # 1. STT
+        t0 = time.perf_counter()
         text_src = self._stt.transcribe(audio, lang=self.src)
+        t_stt = time.perf_counter() - t0
         yield ("text", "stt", text_src)
         if not text_src:
             return
 
         # 2. MT
+        t0 = time.perf_counter()
         text_tgt = self._mt.translate(text_src, self.src, self.tgt)
+        t_mt = time.perf_counter() - t0
+        # RTF (real-time factor) : (stt+mt)/durée audio. > 1 = on ne suit pas
+        # le rythme de la parole → la latence s'accumule.
+        print(
+            f"[pipeline] seg {audio_s:.1f}s → stt {t_stt:.2f}s, mt {t_mt:.2f}s "
+            f"(rtf {(t_stt + t_mt) / max(audio_s, 0.1):.2f})"
+        )
         yield ("text", "mt", text_tgt)
         if not text_tgt:
             return
